@@ -31,7 +31,9 @@
     <!-- MAIN CONTENT -->
     <div id="main_content_wrap" class="outer">
       <section id="main_content" class="inner">
-        <p>BAC0 is a Python 3 scripting application that uses BACpypes to process bacnet messages on a IP network. 
+        <p>.. BAC0 documentation master file</p>
+
+<p>BAC0 is a Python 3 scripting application that uses BACpypes to process bacnet messages on a IP network. 
 This library brings out simple commands to browse a bacnet network, read properties from bacnet devices or write to them.</p>
 
 <p>Python is a simple language to learn and a very powerful tool for data processing. Coupled to bacnet, it becomes a great 
@@ -54,25 +56,92 @@ every test must be done manually.</p>
 <p>Example::</p>
 
 <pre><code>import BAC0
-bacnet = ReadWriteScript()
+bacnet = BAC0.ReadWriteScript()
+
 # Define a controller (this one is on MSTP #3, MAC addr 4, device ID 5504)    
 mycontroller = BAC0.device('3:4', 5504, bacnet)
+
 # Simulate an input (out_of_service -&gt; true)
 # Use 10 as the value for pointName
 mycontroller.sim('pointName 10')
+
 # Release the simulation
 mycontroller.release('pointName')
+
 # Release all simulated points
 mycontroller.releaseAll()
+
 # Write to a point
 mycontroller.write('pointName active')
+
 # Write to relinquish default
 mycontroller.default('pointName 120')
+
 # Read
 mycontroller.read('pointName can be more than one word')
 </code></pre>
 
 <p>Now you can build simple tests using assert syntax for example and make your DDC code stronger.</p>
+
+<h2>
+<a id="assert-" class="anchor" href="#assert-" aria-hidden="true"><span class="octicon octicon-link"></span></a>Assert ?</h2>
+
+<p>Let's say your sequence is really simple. Something like this : </p>
+
+<h1>
+<a id="system-stopped" class="anchor" href="#system-stopped" aria-hidden="true"><span class="octicon octicon-link"></span></a>System stopped</h1>
+
+<p>When system is stopped, fan must be off, dampers must be closed, heater cannot operate.</p>
+
+<h1>
+<a id="system-started" class="anchor" href="#system-started" aria-hidden="true"><span class="octicon octicon-link"></span></a>System started</h1>
+
+<p>When system starts, fan command will be on. Dampers will open to minimum position.
+If fan status turns on, heating sequence will starts.</p>
+
+<p>And so on...</p>
+
+<p>How would I test that ?</p>
+
+<hr>
+
+<p>Controller is defined and its variable name is mycontroller
+Fan command = SF-C
+Fan Status = SF-S
+Dampers command = MAD-O
+Heater = RH-O
+Occupancy command = OCC-SCHEDULE</p>
+
+<p>System Stopped Test Code::</p>
+
+<pre><code>mycontroller.write('OCC-SCHEDULE Unoccupied')
+time.sleep(10)
+assert mycontroller.read('SF-C').value() == 'Off'
+assert mycontroller.read('MAD-O').value() == 0
+assert mycontroller.read('RH-O').value() == 0
+
+# Simulate fan status as SF-C is Off
+mycontroller.sim('SF-S Off')
+</code></pre>
+
+<p>Sytstem Started Test Code::</p>
+
+<pre><code>mycontroller.write('OCC-SCHEDULE Occupied')
+time.sleep(10)
+assert mycontroller.read('SF-C').value() == 'On'
+# Give status
+mycontroller.sim('SF-S On')
+time.sleep(15)
+assert mycontroller.read('MAD-O') == mycontroller.read('MADMIN-POS')
+</code></pre>
+
+<p>And so on...</p>
+
+<p>You are now able to define any test you want. You will probably use more precise conditions
+instead of time.sleep() function (example read a value that tells actual mode is active)</p>
+
+<p>You can then test random temperature values, build functions that will simulate discharge air
+temperature depending on heatign or cooling stages... it's up to you !</p>
 
 <h2>
 <a id="where-to-download" class="anchor" href="#where-to-download" aria-hidden="true"><span class="octicon octicon-link"></span></a>Where to download</h2>
