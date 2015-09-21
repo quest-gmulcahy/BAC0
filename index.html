@@ -39,10 +39,8 @@ This library brings out simple commands to browse a bacnet network, read propert
 <p>Python is a simple language to learn and a very powerful tool for data processing. Coupled to bacnet, it becomes a great 
 tool to test devices an interact with controllers.</p>
 
-<h1>
-<a id="test-driven-development-tdd-for-ddc-controls" class="anchor" href="#test-driven-development-tdd-for-ddc-controls" aria-hidden="true"><span class="octicon octicon-link"></span></a>Test driven development (TDD) for DDC controls</h1>
-
-<hr>
+<h2>
+<a id="test-driven-development-tdd-for-ddc-controls" class="anchor" href="#test-driven-development-tdd-for-ddc-controls" aria-hidden="true"><span class="octicon octicon-link"></span></a>Test driven development (TDD) for DDC controls</h2>
 
 <p>BAC0 allows users to simply test an application even if sensors are not connected to the controller. Using the out_of_service
 property, it's easy to write a value to the input so the controller will think an input is conencted. </p>
@@ -54,8 +52,6 @@ every test must be done manually.</p>
 
 <h2>
 <a id="how-to-use-it" class="anchor" href="#how-to-use-it" aria-hidden="true"><span class="octicon octicon-link"></span></a>How to use it</h2>
-
-<hr>
 
 <p>Example::</p>
 
@@ -87,41 +83,34 @@ mycontroller.read('pointName can be more than one word')
 
 <p>Now you can build simple tests using assert syntax for example and make your DDC code stronger.</p>
 
-<h3>
-<a id="assert-" class="anchor" href="#assert-" aria-hidden="true"><span class="octicon octicon-link"></span></a>Assert ?</h3>
-
-<hr>
+<h2>
+<a id="assert-" class="anchor" href="#assert-" aria-hidden="true"><span class="octicon octicon-link"></span></a>Assert ?</h2>
 
 <p>Let's say your sequence is really simple. Something like this : </p>
 
-<h4>
-<a id="system-stopped" class="anchor" href="#system-stopped" aria-hidden="true"><span class="octicon octicon-link"></span></a>System stopped</h4>
-
-<h1></h1>
+<h1>
+<a id="system-stopped" class="anchor" href="#system-stopped" aria-hidden="true"><span class="octicon octicon-link"></span></a>System stopped</h1>
 
 <p>When system is stopped, fan must be off, dampers must be closed, heater cannot operate.</p>
 
-<h4>
-<a id="system-started" class="anchor" href="#system-started" aria-hidden="true"><span class="octicon octicon-link"></span></a>System started</h4>
-
-<h1></h1>
+<h1>
+<a id="system-started" class="anchor" href="#system-started" aria-hidden="true"><span class="octicon octicon-link"></span></a>System started</h1>
 
 <p>When system starts, fan command will be on. Dampers will open to minimum position.
 If fan status turns on, heating sequence will starts.</p>
 
 <p>And so on...</p>
 
-<h3>
-<a id="how-would-i-test-that-" class="anchor" href="#how-would-i-test-that-" aria-hidden="true"><span class="octicon octicon-link"></span></a>How would I test that ?</h3>
+<p>How would I test that ?</p>
 
 <hr>
 
-<p>*Controller is defined and its variable name is mycontroller
-*Fan command = SF-C
-*Fan Status = SF-S
-*Dampers command = MAD-O
-*Heater = RH-O
-*Occupancy command = OCC-SCHEDULE</p>
+<p>Controller is defined and its variable name is mycontroller
+Fan command = SF-C
+Fan Status = SF-S
+Dampers command = MAD-O
+Heater = RH-O
+Occupancy command = OCC-SCHEDULE</p>
 
 <p>System Stopped Test Code::</p>
 
@@ -154,17 +143,68 @@ instead of time.sleep() function (example read a value that tells actual mode is
 <p>You can then test random temperature values, build functions that will simulate discharge air
 temperature depending on heatign or cooling stages... it's up to you !</p>
 
+<h1>
+<a id="new" class="anchor" href="#new" aria-hidden="true"><span class="octicon octicon-link"></span></a>New</h1>
+
+<p>Version 0.96+ allow the use of points linked to a device. It's now possible to use BAC0
+in a more "framework" way. Once a device is created, all points are created inside the device.
+Each point also store a timeseries of every reading done since its creation so it is easy to 
+know what happened.</p>
+
+<p>Define controller and access points::</p>
+
+<pre><code>import BAC0
+%matplotlib inline 
+bacnet = BAC0.ReadWriteScript()
+
+controller = BAC0.device('2:5',5,bacnet)
+
+controller.get('nvoDO1')
+</code></pre>
+
+<p>Create a polling thread that will read a list of points every 10 seconds::</p>
+
+<pre><code>from BAC0.tasks.Poll import Poll
+pointsToPoll = [controller.get('nvoAI1'), controller.get('nvoAI2'), controller.get('nvoDO1')]
+polling = Poll(pointsToPoll)
+polling.start()
+</code></pre>
+
+<p>Access a historyTable::</p>
+
+<pre><code>controller.get('nvoAI1').showHistoryTable()
+</code></pre>
+
+<p>Result example ::</p>
+
+<pre><code>fx.get('nvoAI1').showHistoryTable()
+Out[8]:
+2015-09-20 21:41:37.093985    21.740000
+2015-09-20 21:42:23.672387    21.790001
+2015-09-20 21:42:34.358801    21.790001
+2015-09-20 21:42:45.841596    21.790001
+2015-09-20 21:42:56.308144    21.790001
+2015-09-20 21:43:06.897034    21.790001
+2015-09-20 21:43:17.593321    21.790001
+2015-09-20 21:43:28.087180    21.790001
+2015-09-20 21:43:38.597702    21.790001
+2015-09-20 21:43:48.815317    21.790001
+2015-09-20 21:44:00.353144    21.790001
+2015-09-20 21:44:10.871324    21.790001
+</code></pre>
+
+<p>Show a chart::</p>
+
+<pre><code>controller.get('nvoAI1').chart()
+</code></pre>
+
 <h2>
 <a id="where-to-download" class="anchor" href="#where-to-download" aria-hidden="true"><span class="octicon octicon-link"></span></a>Where to download</h2>
-
-<hr>
 
 <p><a href="http://christiantremblay.github.io/BAC0/">http://christiantremblay.github.io/BAC0/</a></p>
 
 <h2>
 <a id="what-you-need" class="anchor" href="#what-you-need" aria-hidden="true"><span class="octicon octicon-link"></span></a>What you need</h2>
-
-<hr>
 
 <p>BAC0 is based on BACpypes found here::</p>
 
@@ -180,8 +220,6 @@ temperature depending on heatign or cooling stages... it's up to you !</p>
 <h2>
 <a id="how-to-install-bac0" class="anchor" href="#how-to-install-bac0" aria-hidden="true"><span class="octicon octicon-link"></span></a>How to install BAC0</h2>
 
-<hr>
-
 <p>Once the repo has been cloned, use::</p>
 
 <pre><code>python setup.py install
@@ -190,12 +228,15 @@ temperature depending on heatign or cooling stages... it's up to you !</p>
 <h2>
 <a id="demo-in-a-jupyter-notebook" class="anchor" href="#demo-in-a-jupyter-notebook" aria-hidden="true"><span class="octicon octicon-link"></span></a>Demo in a Jupyter Notebook</h2>
 
-<hr>
-
 <p>When installed, module can be used to script communication with bacnet device.
 Jupyter Notebooks are an excellent way to test it</p>
 
 <p><a href="https://github.com/ChristianTremblay/BAC0/blob/master/Jupyter/BAC0.ipynb">https://github.com/ChristianTremblay/BAC0/blob/master/Jupyter/BAC0.ipynb</a></p>
+
+<h1>
+<a id="doc" class="anchor" href="#doc" aria-hidden="true"><span class="octicon octicon-link"></span></a>Doc</h1>
+
+<p><a href="http://bac0.readthedocs.org/en/latest/">http://bac0.readthedocs.org/en/latest/</a></p>
       </section>
     </div>
 
