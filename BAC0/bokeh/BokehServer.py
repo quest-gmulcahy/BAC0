@@ -12,6 +12,8 @@ The IOLoop creates some conflicts.
 So actually, the process is called outside of the script... then communication
 with the server is made using localhost:5006
 """
+
+from ..server.webserver import BAC0WebServer
 from threading import Thread
 import time
 
@@ -41,17 +43,8 @@ class BokehServer(Thread):
             self.task()
 
     def startServer(self):
-        if 'win32' in sys.platform:
-            commandToExecute = "bokeh serve"
-        else:
-            commandToExecute = "bokeh serve"
-        cmdargs = shlex.split(commandToExecute)
-        p = subprocess.Popen(cmdargs, stdout=PIPE, stderr=PIPE)
-        output, errors = p.communicate()
-        if p.returncode:
-            print('Failed running %s' % commandToExecute)
-            raise Exception(errors)
-        return output.decode('utf-8')
+        self.serverApp = BAC0WebServer()
+        self.serverApp.start_the_thing()
     
     def task(self):
         try:

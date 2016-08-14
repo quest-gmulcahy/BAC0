@@ -29,6 +29,8 @@ setup(name='BAC0',
           'BAC0.scripts',
           'BAC0.tasks',
           'BAC0.bokeh',
+          'BAC0.server',
+          'BAC0.server.templates',
           'BAC0.sql'
           ],
       requires=requirements,
