@@ -30,28 +30,30 @@ class Simulation():
 
         """
         if not self._started:
-            raise ApplicationNotStarted('BACnet stack not running - use startApp()')
+            raise ApplicationNotStarted(
+                'BACnet stack not running - use startApp()')
 
-        #with self.this_application._lock: if use lock...won't be able to call read...
         args = args.split()
         addr, obj_type, obj_inst, prop_id, value = args[:5]
 
         if self.read('{} {} {} outOfService'.format(addr, obj_type, obj_inst)):
-            self.write('{} {} {} {} {}'.format(addr, obj_type, obj_inst, prop_id, value))
+            self.write('{} {} {} {} {}'.format(
+                addr, obj_type, obj_inst, prop_id, value))
         else:
             try:
-                self.write('{} {} {} outOfService True'.format(addr, obj_type, obj_inst))
+                self.write('{} {} {} outOfService True'.format(
+                    addr, obj_type, obj_inst))
             except NoResponseFromController:
                 pass
 
             try:
                 if self.read('{} {} {} outOfService'.format(addr, obj_type, obj_inst)):
-                    self.write('{} {} {} {} {}'.format(addr, obj_type, obj_inst, prop_id, value))
+                    self.write('{} {} {} {} {}'.format(
+                        addr, obj_type, obj_inst, prop_id, value))
                 else:
                     raise OutOfServiceNotSet()
             except NoResponseFromController:
                 pass
-
 
     def out_of_service(self, args):
         """
@@ -61,16 +63,16 @@ class Simulation():
 
         """
         if not self._started:
-            raise ApplicationNotStarted('BACnet stack not running - use startApp()')
+            raise ApplicationNotStarted(
+                'BACnet stack not running - use startApp()')
 
-        #with self.this_application._lock: if use lock...won't be able to call read...
         args = args.split()
         addr, obj_type, obj_inst = args[:3]
         try:
-            self.write('{} {} {} outOfService True'.format(addr, obj_type, obj_inst))
+            self.write('{} {} {} outOfService True'.format(
+                addr, obj_type, obj_inst))
         except NoResponseFromController:
             pass
-
 
     def release(self, args):
         """
@@ -81,12 +83,14 @@ class Simulation():
 
         """
         if not self._started:
-            raise ApplicationNotStarted('BACnet stack not running - use startApp()')
+            raise ApplicationNotStarted(
+                'BACnet stack not running - use startApp()')
 
         args = args.split()
         addr, obj_type, obj_inst = args[:3]
         try:
-            self.write('{} {} {} outOfService False'.format(addr, obj_type, obj_inst))
+            self.write('{} {} {} outOfService False'.format(
+                addr, obj_type, obj_inst))
         except NoResponseFromController:
             pass
 

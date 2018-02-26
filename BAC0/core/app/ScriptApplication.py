@@ -18,11 +18,8 @@ extending it with more functions. [See BAC0.scripts for more examples of this.]
 '''
 #--- standard Python modules ---
 from collections import defaultdict
-import logging
 
 #--- 3rd party modules ---
-from bacpypes.debugging import bacpypes_debugging
-
 from bacpypes.app import BIPSimpleApplication
 from bacpypes.pdu import Address
 
@@ -32,6 +29,7 @@ from ..utils.notes import note_and_log
 
 #------------------------------------------------------------------------------
 
+
 @note_and_log
 class ScriptApplication(BIPSimpleApplication):
     """
@@ -39,13 +37,14 @@ class ScriptApplication(BIPSimpleApplication):
 
     :param *args: local object device, local IP address
         See BAC0.scripts.BasicScript for more details.
-        
+
     """
-    def __init__(self, *args):        
+
+    def __init__(self, *args):
         self.localAddress = None
 
         super().__init__(*args)
-        
+
         self._request = None
 
         self.i_am_counter = defaultdict(int)
@@ -58,15 +57,14 @@ class ScriptApplication(BIPSimpleApplication):
             self.local_unicast_tuple = ('', 47808)
             self.local_broadcast_tuple = ('255.255.255.255', 47808)
 
-    
     def do_WhoIsRequest(self, apdu):
         """Respond to a Who-Is request."""
-        self.log(("do_WhoIsRequest %r", apdu))
+        self.log_debug("do_WhoIsRequest %r", apdu)
 
         # build a key from the source and parameters
         key = (str(apdu.pduSource),
-            apdu.deviceInstanceRangeLowLimit,
-            apdu.deviceInstanceRangeHighLimit )
+               apdu.deviceInstanceRangeLowLimit,
+               apdu.deviceInstanceRangeHighLimit)
 
         # count the times this has been received
         self.who_is_counter[key] += 1
@@ -74,16 +72,13 @@ class ScriptApplication(BIPSimpleApplication):
         # continue with the default implementation
         BIPSimpleApplication.do_WhoIsRequest(self, apdu)
 
-
     def do_IAmRequest(self, apdu):
         """Given an I-Am request, cache it."""
-        self.log(("do_IAmRequest %r", apdu))
+        self.log_debug("do_IAmRequest %r", apdu)
 
         # build a key from the source, just use the instance number
-        key = (str(apdu.pduSource), apdu.iAmDeviceIdentifier[1] )
+        key = (str(apdu.pduSource), apdu.iAmDeviceIdentifier[1])
         self.i_am_counter[key] += 1
 
         # continue with the default implementation
         BIPSimpleApplication.do_IAmRequest(self, apdu)
-
-

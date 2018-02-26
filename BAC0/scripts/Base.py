@@ -42,12 +42,13 @@ from ..core.utils.notes import note_and_log
 
 #------------------------------------------------------------------------------
 
+
 @note_and_log
 class Base():
     """
     Build a running BACnet/IP device that accepts WhoIs and IAm requests
     Initialization requires some minimial information about the local device.
-    
+
     :param localIPAddr='127.0.0.1':
     :param localObjName='BAC0':
     :param DeviceId=None:
@@ -55,19 +56,20 @@ class Base():
     :param maxSegmentsAccepted='1024':
     :param segmentationSupported='segmentedBoth':
     """
-    
+
     def __init__(self, localIPAddr='127.0.0.1', localObjName='BAC0', DeviceId=None,
                  maxAPDULengthAccepted='1024', maxSegmentsAccepted='1024', segmentationSupported='segmentedBoth'):
 
-        self._log.debug("Configurating app")
-        
+        self.log_debug("Configurating app")
+
         self.response = None
         self._initialized = False
         self._started = False
         self._stopped = False
 
-        self.localIPAddr= localIPAddr
-        self.Boid = int(DeviceId) if DeviceId else (3056177 + int(random.uniform(0, 1000)))
+        self.localIPAddr = localIPAddr
+        self.Boid = int(DeviceId) if DeviceId else (
+            3056177 + int(random.uniform(0, 1000)))
 
         self.segmentationSupported = segmentationSupported
         self.maxSegmentsAccepted = maxSegmentsAccepted
@@ -83,24 +85,23 @@ class Base():
 
         self.startApp()
 
-
     def startApp(self):
         """
         Define the local device, including services supported.
         Once defined, start the BACnet stack in its own thread.
         """
-        self._log.debug("Create Local Device")
+        self.log_debug("Create Local Device")
         try:
             # make a device object
             self.this_device = LocalDeviceObject(
-                objectName= self.localObjName,
-                objectIdentifier= self.Boid,
+                objectName=self.localObjName,
+                objectIdentifier=self.Boid,
                 maxApduLengthAccepted=int(self.maxAPDULengthAccepted),
                 segmentationSupported=self.segmentationSupported,
-                vendorIdentifier= self.vendorId,
-                vendorName= self.vendorName,
-                modelName= self.modelName,
-                systemStatus= self.systemStatus,
+                vendorIdentifier=self.vendorId,
+                vendorName=self.vendorName,
+                modelName=self.modelName,
+                systemStatus=self.systemStatus,
                 description='http://christiantremblay.github.io/BAC0/',
                 firmwareRevision=''.join(sys.version.split('|')[:2]),
                 applicationSoftwareVersion=infos.__version__,
@@ -120,22 +121,22 @@ class Base():
             self.this_device.protocolServicesSupported = pss.value
 
             # make a simple application
-            self.this_application = ScriptApplication(self.this_device, self.localIPAddr)
+            self.this_application = ScriptApplication(
+                self.this_device, self.localIPAddr)
 
-            self._log.debug("Starting")
+            self.log_debug("Starting")
             self._initialized = True
             try:
                 self._startAppThread()
             except:
-                self._log.warning("Error opening socket")
+                self.log_warning("Error opening socket")
                 raise
-            self._log.debug("Running")
+            self.log_debug("Running")
 
         except Exception as error:
-            self._log.error("an error has occurred: %s", error)
+            self.log_error("an error has occurred: %s", error)
         finally:
-            self._log.debug("finally")
-
+            self.log_debug("finally")
 
     def disconnect(self):
         """
@@ -154,19 +155,16 @@ class Base():
         self._started = False
         print('BACnet stopped')
 
-
     def _startAppThread(self):
         """
         Starts the BACnet stack in its own thread so requests can be processed.
         As signal cannot be called in another thread than the main thread
         when calling startBacnetIPApp, we must pass None to both parameters
         """
-        self._log.info('Starting app...')
+        self.log_info('Starting app...')
         enable_sleeping(0.0005)
-        self.t = Thread(target=startBacnetIPApp, kwargs={'sigterm': None,'sigusr1': None}, daemon = True)
+        self.t = Thread(target=startBacnetIPApp, kwargs={
+                        'sigterm': None, 'sigusr1': None}, daemon=True)
         self.t.start()
         self._started = True
-        self._log.info('BAC0 started')
-        
-
-
+        self.log_info('BAC0 started')

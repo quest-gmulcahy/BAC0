@@ -23,8 +23,6 @@ Write.py - creation of WriteProperty requests
 
 '''
 #--- 3rd party modules ---
-from bacpypes.debugging import bacpypes_debugging, ModuleLogger
-
 from bacpypes.pdu import Address
 from bacpypes.object import get_datatype
 
@@ -37,24 +35,19 @@ from bacpypes.core import deferred
 
 #--- this application's modules ---
 from .IOExceptions import WritePropertyCastError, NoResponseFromController, WritePropertyException, WriteAccessDenied, ApplicationNotStarted
-from ..functions.debug import log_debug, log_exception
+from ..utils.notes import note_and_log
 
 
 #------------------------------------------------------------------------------
 
-# some debugging
-_debug = 0
-_LOG = ModuleLogger(globals())
-
-
-@bacpypes_debugging
+@note_and_log
 class WriteProperty():
     """
     Defines BACnet Write functions: WriteProperty [WritePropertyMultiple not supported]
 
     """
 
-    def write(self, args, vendor_id = 0):
+    def write(self, args, vendor_id=0):
         """ Build a WriteProperty request, wait for an answer, and return status [True if ok, False if not].
 
         :param args: String with <addr> <type> <inst> <prop> <value> [ <indx> ] [ <priority> ]
@@ -74,7 +67,7 @@ class WriteProperty():
             raise ApplicationNotStarted(
                 'BACnet stack not running - use startApp()')
         args = args.split()
-        log_debug(WriteProperty, "do_write %r", args)
+        self.log_debug("do_write %r", args)
 
         try:
             # build a WriteProperty request
@@ -84,13 +77,13 @@ class WriteProperty():
 
         except WritePropertyException as error:
             # construction error
-            log_exception("exception: %r", error)
+            self.log_error("exception: %r", error)
 
         iocb.wait()             # Wait for BACnet response
 
         if iocb.ioResponse:     # successful response
             if not isinstance(iocb.ioResponse, SimpleAckPDU):   # expect an ACK
-                log_debug(WriteProperty, "    - not an ack")
+                self.log_warning("- not an ack. Write has failed.")
                 return
 
         if iocb.ioError:        # unsuccessful: error/reject/abort
@@ -108,19 +101,19 @@ class WriteProperty():
         if len(args) >= 6:
             if args[5] != "-":
                 indx = int(args[5])
-        log_debug(WriteProperty, "    - indx: %r", indx)
+        self.log_debug("    - indx: %r", indx)
 
         priority = None
         if len(args) >= 7:
             priority = int(args[6])
-        log_debug(WriteProperty, "    - priority: %r", priority)
+        self.log_debug("    - priority: %r", priority)
 
         # get the datatype
-        
+
         if prop_id.isdigit():
             prop_id = int(prop_id)
         datatype = get_datatype(obj_type, prop_id, vendor_id=vendor_id)
-        log_debug(WriteProperty, "    - datatype: %r", datatype)
+        self.log_debug("    - datatype: %r", datatype)
         # change atomic values into something encodeable, null is a special
         # case
         if value == 'null':
@@ -149,11 +142,9 @@ class WriteProperty():
             raise TypeError(
                 "invalid result datatype, expecting %s" %
                 (datatype.__name__,))
-        log_debug(
-            WriteProperty,
+        self.log_debug(
             "    - encodeable value: %r %s",
-            value,
-            type(value))
+            (value, type(value)))
 
         # build a request
         request = WritePropertyRequest(
@@ -165,7 +156,7 @@ class WriteProperty():
         try:
             request.propertyValue.cast_in(value)
         except WritePropertyCastError as error:
-            log_exception("WriteProperty cast error: %r", error)
+            self.log_error("WriteProperty cast error: %r", error)
 
         # optional array index
         if indx is not None:
@@ -175,5 +166,5 @@ class WriteProperty():
         if priority is not None:
             request.priority = priority
 
-        log_debug(WriteProperty, "    - request: %r", request)
+        self.log_debug("    - request: %r", request)
         return request

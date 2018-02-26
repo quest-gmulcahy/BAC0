@@ -1,3 +1,4 @@
+
 # -*- coding: utf-8 -*-
 """
 Notes and logger decorator to be used on class
@@ -83,34 +84,52 @@ def note_and_log(cls):
             cls._log.addHandler(fh)
         cls._log.addHandler(ch)
 
-    def log(self, note, *, level=logging.DEBUG):
+    def log(self, txt, args=None, *, level=logging.DEBUG):
         """
         Add a log entry...no note
         """
-        if not note:
+        if not txt:
             raise ValueError('Provide something to log')
-        cls._log.log(level, note)
+        msg = (txt % args) if args else txt
+        cls._log.log(self.get_level(level), msg)
 
-    def note(self, note, *, level=logging.INFO, log=True):
+    def log_info(self, txt, args=None):
+        self.log(txt, args, level=logging.INFO)
+
+    def log_debug(self, txt, args=None):
+        self.log(txt, args, level=logging.DEBUG)
+
+    def log_warning(self, txt, args=None):
+        self.log(txt, args, level=logging.WARNING)
+
+    def log_error(self, txt, args=None):
+        self.log(txt, args, level=logging.ERROR)
+
+    def log_critical(self, txt, args=None):
+        self.log(txt, args, level=level.CRITIC)
+
+    def note(self, txt, args=None, *, level=logging.INFO, log=True):
         """
         Add note to the object. By default, the note will also
         be logged
 
         :param note: (str) The note itself
+        :param args: arguments for msg
         :param level: (logging.level)
         :param log: (boolean) Enable or disable logging of note
         """
-        if not note:
+        if not txt:
             raise ValueError('Provide something to log')
+        msg = (txt % args) if args else txt
         cls._notes.timestamp.append(datetime.now())
-        cls._notes.notes.append(note)
+        cls._notes.notes.append(msg)
         if log:
-            cls.log(level, note)
+            self.log(msg, level=self.get_level(level))
 
     @property
     def notes(self):
         """
-        Retrieve notes list as a Pandas Series
+        Retrieve notes list as a Pandas Series if possible... or a dict.
         """
         if not _PANDAS:
             return dict(zip(self._notes.timestamp, self._notes.notes))
@@ -123,9 +142,34 @@ def note_and_log(cls):
         cls._notes.timestamp = []
         cls._notes.notes = []
 
+    def get_level(self, lvl):
+        SUPPORTED_LEVELS = [logging.INFO,
+                            logging.DEBUG,
+                            logging.WARNING,
+                            logging.ERROR,
+                            logging.CRITICAL
+                            ]
+        LEVELS = {'info': logging.INFO,
+                  'warning': logging.WARNING,
+                  'error': logging.ERROR,
+                  'critical': logging.CRITICAL,
+                  }
+        if lvl in SUPPORTED_LEVELS:
+            return lvl
+        else:
+            try:
+                return LEVELS[lvl.lower()]
+            except IndexError:
+                raise IndexError('Wrong level provided for logging')
+
     # Add the functions to the decorated class
     cls.clear_notes = clear_notes
     cls.note = note
     cls.notes = notes
     cls.log = log
+    cls.log_debug = log_debug
+    cls.log_info = log_info
+    cls.log_warning = log_warning
+    cls.log_error = log_error
+    cls.get_level = get_level
     return cls

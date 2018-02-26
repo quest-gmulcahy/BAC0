@@ -22,12 +22,7 @@ Once the class is created, create the local object and use it::
 
 '''
 #--- standard Python modules ---
-import logging
-import logging.handlers
-from datetime import datetime
-
 import pandas as pd
-
 
 #--- 3rd party modules ---
 from bokeh.application import Application
@@ -141,8 +136,8 @@ class Complete(Lite, Stats_Mixin):
             self.start_bokeh()
             self.FlaskServer.start()
         else:
-            self.log(
-                'Bokeh server not started. Trend feature will not work', level=logging.WARNING)
+            self.log_warning(
+                'Bokeh server not started. Trend feature will not work')
 
     @property
     def devices(self):
@@ -157,7 +152,7 @@ class Complete(Lite, Stats_Mixin):
                 vendorName = self.read(
                     '%s device %s vendorName' % (device[0], device[1]))
             except NoResponseFromController:
-                self._log.info('No response from %s' % device)
+                self.log_info('No response from %s' % device)
                 continue
             lst.append((deviceName, vendorName, device[0], device[1]))
         df = pd.DataFrame(lst, columns=[
@@ -183,21 +178,16 @@ class Complete(Lite, Stats_Mixin):
                 network=self, port=self.flask_port, ip=self.localIPAddr)
             self.bk_worker.start()
             self.bokehserver = True
-            print('Server started : http://localhost:%s' % self.flask_port)
-
-        except OSError as error:
-            self.bokehserver = False
-            self._log.error(
-                '[bokeh serve] required for trending (controller.chart) features')
-            self._log.error(error)
+            print('Server started : http://%s:%s' %
+                  (self.localIPAddr, self.flask_port))
 
         except RuntimeError as rterror:
             self.bokehserver = False
-            self._log.warning('Server already running')
+            self.log_warning('Server already running')
 
         except BokehServerCantStart:
             self.bokehserver = False
-            self._log.error('No Bokeh Server - controller.chart not available')
+            self.log_error('No Bokeh Server - controller.chart not available')
 
     def __repr__(self):
-        return 'Bacnet Network using ip %s with device id %s | Featuring Bokeh and Pandas' % (self.localIPAddr, self.Boid)
+        return 'Bacnet Network using ip %s with device id %s | Featuring Flask, Bokeh and Pandas' % (self.localIPAddr, self.Boid)

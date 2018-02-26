@@ -43,8 +43,6 @@ from ..core.io.IOExceptions import NoResponseFromController, UnrecognizedService
 
 from ..infos import __version__ as version
 
-
-
 #------------------------------------------------------------------------------
 
 
@@ -58,14 +56,16 @@ class Lite(Base, WhoisIAm, ReadProperty, WriteProperty, Simulation):
 
     :param ip='127.0.0.1': Address must be in the same subnet as the BACnet network 
         [BBMD and Foreign Device - not supported] 
-        
+
     :param bokeh_server: (boolean) If set to false, will prevent Bokeh server
         from being started. Can help troubleshoot issues with Bokeh. By default,
         set to True.
     """
+
     def __init__(self, ip=None):
-        print("Starting BAC0 version %s (%s)" % (version, self.__module__.split('.')[-1]))
-        self.log("Configurating app")
+        print("Starting BAC0 version %s (%s)" %
+              (version, self.__module__.split('.')[-1]))
+        self.log_debug("Configurating app")
         self._registered_devices = weakref.WeakValueDictionary()
         if ip is None:
             host = HostIP()
@@ -74,7 +74,7 @@ class Lite(Base, WhoisIAm, ReadProperty, WriteProperty, Simulation):
             ip_addr = ip
 
         Base.__init__(self, localIPAddr=ip_addr)
-        
+
         self.bokehserver = False
         self._points_to_trend = weakref.WeakValueDictionary()
         # Force a global whois to find all devices on the network
@@ -82,12 +82,12 @@ class Lite(Base, WhoisIAm, ReadProperty, WriteProperty, Simulation):
         time.sleep(2)
 
     def update_whois(self):
-        return (self.whois(),str(datetime.now())) 
-    
+        return (self.whois(), str(datetime.now()))
+
     def register_device(self, device):
         oid = id(device)
         self._registered_devices[oid] = device
-        
+
     @property
     def registered_devices(self):
         """
@@ -105,7 +105,7 @@ class Lite(Base, WhoisIAm, ReadProperty, WriteProperty, Simulation):
     def add_trend(self, point_to_trend):
         """
         Add point to the list of histories that will be handled by Bokeh
-        
+
         Argument provided must be of type Point
         ex. bacnet.add_trend(controller['point_name'])
         """
@@ -118,7 +118,7 @@ class Lite(Base, WhoisIAm, ReadProperty, WriteProperty, Simulation):
     def remove_trend(self, point_to_remove):
         """
         Remove point from the list of histories that will be handled by Bokeh
-        
+
         Argument provided must be of type Point
         ex. bacnet.remove_trend(controller['point_name'])
         """
@@ -134,10 +134,13 @@ class Lite(Base, WhoisIAm, ReadProperty, WriteProperty, Simulation):
         lst = []
         for device in list(self.discoveredDevices):
             try:
-                deviceName, vendorName = self.readMultiple('%s device %s objectName vendorName' % (device[0], device[1]))                
+                deviceName, vendorName = self.readMultiple(
+                    '%s device %s objectName vendorName' % (device[0], device[1]))
             except UnrecognizedService:
-                deviceName = self.read('%s device %s objectName' % (device[0], device[1])) 
-                vendorName = self.read('%s device %s vendorName' % (device[0], device[1]))
+                deviceName = self.read(
+                    '%s device %s objectName' % (device[0], device[1]))
+                vendorName = self.read(
+                    '%s device %s vendorName' % (device[0], device[1]))
             except NoResponseFromController:
                 self._log.info('No response from %s' % device)
                 continue
@@ -156,6 +159,3 @@ class Lite(Base, WhoisIAm, ReadProperty, WriteProperty, Simulation):
 
     def __repr__(self):
         return 'Bacnet Network using ip %s with device id %s' % (self.localIPAddr, self.Boid)
-
-    
-    

@@ -25,8 +25,6 @@ Read.py - creation of ReadProperty and ReadPropertyMultiple requests
 #--- standard Python modules ---
 
 #--- 3rd party modules ---
-from bacpypes.debugging import bacpypes_debugging
-
 from bacpypes.pdu import Address
 from bacpypes.object import get_object_class, get_datatype
 from bacpypes.apdu import PropertyReference, ReadAccessSpecification, \
@@ -41,7 +39,7 @@ from bacpypes.core import deferred
 
 #--- this application's modules ---
 from .IOExceptions import ReadPropertyException, ReadPropertyMultipleException, NoResponseFromController, ApplicationNotStarted, UnrecognizedService, SegmentationNotSupported
-from ..functions.debug import log_debug, log_exception, log_warning
+from ..utils.notes import note_and_log
 
 #------------------------------------------------------------------------------
 
@@ -49,7 +47,7 @@ from ..functions.debug import log_debug, log_exception, log_warning
 _DEBUG = 0
 
 
-@bacpypes_debugging
+@note_and_log
 class ReadProperty():
     """
     Defines BACnet Read functions: readProperty and readPropertyMultiple.
@@ -79,7 +77,7 @@ class ReadProperty():
                 'BACnet stack not running - use startApp()')
 
         args_split = args.split()
-        log_debug(ReadProperty, "do_read %r", args_split)
+        self.log_debug("do_read %r", args_split)
         vendor_id = vendor_id
         bacoid = bacoid
 
@@ -89,11 +87,11 @@ class ReadProperty():
                 args_split, arr_index=arr_index, vendor_id=vendor_id, bacoid=bacoid))
             # pass to the BACnet stack
             deferred(self.this_application.request_io, iocb)
-            log_debug(ReadProperty, "    - iocb: %r", iocb)
+            self.log_debug("    - iocb: %r", iocb)
 
         except ReadPropertyException as error:
             # construction error
-            log_exception("exception: %r", error)
+            self.log_error("exception: %r", error)
 
         iocb.wait()             # Wait for BACnet response
 
@@ -101,15 +99,15 @@ class ReadProperty():
             apdu = iocb.ioResponse
 
             if not isinstance(apdu, ReadPropertyACK):               # expecting an ACK
-                log_debug(ReadProperty, "    - not an ack")
-                log_warning(ReadProperty, "APDU : %s / %s" %
-                            (apdu, type(apdu)))
+                self.log_debug("    - not an ack")
+                self.log_warning("APDU : %s / %s",
+                                 (apdu, type(apdu)))
                 return
 
             # find the datatype
             datatype = get_datatype(
                 apdu.objectIdentifier[0], apdu.propertyIdentifier, vendor_id=vendor_id)
-            log_debug(ReadProperty, "    - datatype: %r", datatype)
+            self.log_debug("    - datatype: %r", datatype)
             if not datatype:
                 raise TypeError("unknown datatype")
 
@@ -121,7 +119,7 @@ class ReadProperty():
                     value = apdu.propertyValue.cast_out(datatype.subtype)
             else:
                 value = apdu.propertyValue.cast_out(datatype)
-            log_debug(ReadProperty, "    - value: %r", value)
+            self.log_debug("    - value: %r", value)
 
             return value
 
@@ -129,15 +127,15 @@ class ReadProperty():
             apdu = iocb.ioError
             reason = find_reason(apdu)
             if reason == 'segmentationNotSupported':
-                log_warning(
-                    ReadProperty, "Segmentation not supported... will read properties one by one...")
-                log_debug(ReadProperty, "The Request was : %s", args_split)
+                self.log_debug(
+                    "Segmentation not supported... will read properties one by one...")
+                self.log_debug("The Request was : %s", args_split)
                 value = self._split_the_read_request(args, arr_index)
                 return value
             else:
 
                 if reason == 'unknownProperty':
-                    log_warning(ReadProperty, 'Unknown property %s', args)
+                    self.log_warning('Unknown property %s', args)
 
                 # Other error... consider NoResponseFromController (65)
                 # even if the realy reason is another one
@@ -184,7 +182,7 @@ class ReadProperty():
 
         args = args.split()
         values = []
-        log_debug(ReadProperty, "readMultiple %r", args)
+        self.log_debug(ReadProperty, "readMultiple %r", args)
 
         try:
             # build an ReadPropertyMultiple request
@@ -194,7 +192,7 @@ class ReadProperty():
 
         except ReadPropertyMultipleException as error:
             # construction error
-            log_exception("exception: %r", error)
+            self.log_error("exception: %r", error)
 
         iocb.wait()             # Wait for BACnet response
 
@@ -202,35 +200,36 @@ class ReadProperty():
             apdu = iocb.ioResponse
 
             if not isinstance(apdu, ReadPropertyMultipleACK):       # expecting an ACK
-                log_debug(ReadProperty, "    - not an ack")
-                log_warning(ReadProperty, "APDU : %s / %s" %
-                            (apdu, type(apdu)))
+                self.log_warning("- not an ack")
+                self.log_warning("APDU : %s / %s",
+                                 (apdu, type(apdu)))
                 return
 
             # loop through the results
             for result in apdu.listOfReadAccessResults:
                 # here is the object identifier
                 objectIdentifier = result.objectIdentifier
-                log_debug(ReadProperty, "    - objectIdentifier: %r",
-                          objectIdentifier)
+                self.log_debug("- objectIdentifier: %r",
+                               objectIdentifier)
 
                 # now come the property values per object
                 for element in result.listOfResults:
                     # get the property and array index
                     propertyIdentifier = element.propertyIdentifier
-                    log_debug(
-                        ReadProperty, "    - propertyIdentifier: %r", propertyIdentifier)
+                    self.log_debug("- propertyIdentifier: %r",
+                                   propertyIdentifier)
                     propertyArrayIndex = element.propertyArrayIndex
-                    log_debug(
-                        ReadProperty, "    - propertyArrayIndex: %r", propertyArrayIndex)
+                    self.log_debug("- propertyArrayIndex: %r",
+                                   propertyArrayIndex)
 
                     readResult = element.readResult
 
                     if propertyArrayIndex is not None:
-                        print("[" + str(propertyArrayIndex) + "]")
+                        self.log_error("[" + str(propertyArrayIndex) + "]")
 
                     if readResult.propertyAccessError is not None:
-                        print(" ! " + str(readResult.propertyAccessError))
+                        self.log_error(
+                            " ! " + str(readResult.propertyAccessError))
                     else:
                         # here is the value
                         propertyValue = readResult.propertyValue
@@ -238,7 +237,7 @@ class ReadProperty():
                         # find the datatype
                         datatype = get_datatype(
                             objectIdentifier[0], propertyIdentifier)
-                        log_debug(ReadProperty, "    - datatype: %r", datatype)
+                        self.log_debug("- datatype: %r", datatype)
                         if not datatype:
                             raise TypeError("unknown datatype")
 
@@ -251,27 +250,25 @@ class ReadProperty():
                                     datatype.subtype)
                         else:
                             value = propertyValue.cast_out(datatype)
-                        log_debug(ReadProperty, "    - value: %r", value)
-
+                        self.log_debug("- value: %r", value)
                         values.append(value)
-
-            return values
+                        return values
 
         if iocb.ioError:        # unsuccessful: error/reject/abort
             apdu = iocb.ioError
             reason = find_reason(apdu)
-            log_warning(ReadProperty, "APDU Abort Reject Reason : %s", reason)
-            log_debug(ReadProperty, "The Request was : %s", args)
+            self.log_debug("APDU Abort Reject Reason : %s", reason)
+            self.log_debug("The Request was : %s", args)
             if reason == 'unrecognizedService':
                 raise UnrecognizedService()
             elif reason == 'segmentationNotSupported':
                 raise SegmentationNotSupported()
             elif reason == 'unknownProperty':
-                log_warning(ReadProperty, 'Unknown property %s', args)
+                self.log_warning('Unknown property %s', args)
                 values.append("")
                 return values
             else:
-                log_warning(ReadProperty, "No response from controller")
+                self.log_warning("No response from controller")
                 values.append("")
                 return values
 
@@ -303,7 +300,7 @@ class ReadProperty():
 
         if len(args) == 5:
             request.propertyArrayIndex = int(args[4])
-        log_debug(ReadProperty, "    - request: %r", request)
+        self.log_debug("- request: %r", request)
 
         return request
 
@@ -372,7 +369,7 @@ class ReadProperty():
         request = ReadPropertyMultipleRequest(
             listOfReadAccessSpecs=read_access_spec_list)
         request.pduDestination = Address(addr)
-        log_debug(ReadProperty, "    - request: %r", request)
+        self.log_debug("    - request: %r", request)
 
         return request
 
@@ -386,8 +383,8 @@ def find_reason(apdu):
         if apdu.errorCode and apdu.errorClass:
             return '%s' % (apdu.errorCode)
         else:
-            log_warning(ReadProperty, 'Cannot identify error : %s' %
-                        apdu.__dict__)
+            self.log_warning('Cannot identify error : %s',
+                             apdu.__dict__)
             return 'UnKnown Error...'
     code = apdu.apduAbortRejectReason
     try:
