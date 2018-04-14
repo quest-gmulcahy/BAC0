@@ -10,11 +10,13 @@ read_mixin.py - Add ReadProperty and ReadPropertyMultiple to a device
 #--- standard Python modules ---
 
 #--- 3rd party modules ---
+from bacpypes import basetypes
 
 #--- this application's modules ---
 from ....tasks.Poll import DevicePoll
-from ...io.IOExceptions import ReadPropertyMultipleException, NoResponseFromController, SegmentationNotSupported
+from ...io.IOExceptions import ReadPropertyMultipleException, NoResponseFromController, SegmentationNotSupported, UnknownObjectError
 from ..Points import NumericPoint, BooleanPoint, EnumPoint, OfflinePoint
+from ...io.Read import validate_rpm
 
 #------------------------------------------------------------------------------
 
@@ -91,6 +93,8 @@ class ReadPropertyMultiple():
                 big_request = discover_request[0]
 
                 for request in self._batches(big_request, points_per_request):
+                    #info_length = len(request)-2
+                    self._log.debug('RPM request len {}'.format(info_length))
                     
                     try:
                         request = ('{} {}'.format(self.properties.address, ''.join(request)))
@@ -180,11 +184,12 @@ class ReadPropertyMultiple():
 
 
     def _discoverPoints(self, custom_object_list = None):
+        self._log.debug('Discovering points...')
         if custom_object_list:
             objList = custom_object_list
         else:
             try : 
-                    objList = self.properties.network.read(
+                objList = self.properties.network.read(
                     '{} device {} objectList'.format(self.properties.address, self.properties.device_id))
             
             except NoResponseFromController:
@@ -202,15 +207,41 @@ class ReadPropertyMultiple():
 
         points = []
 
-
+        def try_to_add_priorityArray(requests):
+            new_request = []
+            length_of_request = 0
+            for each in requests:
+                length_of_request = len(each.split(' '))
+                try:                
+                    req_with_pa = each + "priorityArray "
+                    built_req = validate_rpm(req_with_pa)
+                    new_request.append(req_with_pa)
+                    self._log.debug('Can add priority array to {}'.format(new_request))
+                except (ValueError, UnknownObjectError):
+                    req_with_one_more_property = each + "objectType "
+                    new_request.append(req_with_one_more_property)
+                    self._log.debug('Will read objectIdentifier instead... {}'.format(new_request))
+            return (new_request, length_of_request)
+            
+        def retrieve_priority_array_from_response(response):
+            priority_array = response[-1]
+            if isinstance(priority_array, basetypes.PriorityArray):
+                self._log.debug('There a priority array ', priority_array)
+                return (priority_array, response)
+            else:
+                return (False, response)
+                
+    
         # Numeric
         analog_request = []
+        
         list_of_analog = retrieve_type(objList, 'analog')
         for analog_points, address in list_of_analog:
             analog_request.append('{} {} objectName presentValue units description '.format(analog_points, address))
 
+        
         try:
-            analog_points_info = self.read_multiple('', discover_request=(analog_request, 4), points_per_request=5)
+            analog_points_info = self.read_multiple('', discover_request=try_to_add_priorityArray(analog_request), points_per_request=5)
             self._log.info(analog_points_info)
         except SegmentationNotSupported:
             raise
@@ -220,17 +251,19 @@ class ReadPropertyMultiple():
             point_type = str(each[0])
             point_address = str(each[1])
             point_infos = analog_points_info[i]
+            
+            point_priority_array, point_infos = retrieve_priority_array_from_response(point_infos)
 
-            if len(point_infos) == 4:
+            if len(point_infos) == 5:
                 point_units_state = point_infos[2]
                 point_description = point_infos[3]
 
-            elif len(point_infos) == 3:
+            elif len(point_infos) == 4:
                 #we probably get only objectName, presentValue and units
                 point_units_state = point_infos[2]
                 point_description = ""
 
-            elif len(point_infos) == 2:
+            elif len(point_infos) == 3:
                 point_units_state = ""          
                 point_description = ""
 
@@ -238,6 +271,7 @@ class ReadPropertyMultiple():
                 #raise ValueError('Not enough values returned', each, point_infos)
                 # SHOULD SWITCH TO SEGMENTATION_SUPPORTED = FALSE HERE
                 self._log.warning('Cannot add {} / {} | {}'.format(point_type, point_address, len(point_infos)))
+                i += 1
                 continue
             
             i += 1
@@ -245,7 +279,7 @@ class ReadPropertyMultiple():
                 NumericPoint(
                     pointType=point_type,   pointAddress=point_address, pointName=point_infos[0],
                     description=point_description,  presentValue=float(point_infos[1]), units_state=point_units_state,
-                    device=self))
+                    priority_array = point_priority_array, device=self))
 
         multistate_request = []
         list_of_multistate = retrieve_type(objList, 'multi')
@@ -253,7 +287,7 @@ class ReadPropertyMultiple():
             multistate_request.append('{} {} objectName presentValue stateText description '.format(multistate_points, address))
 
         try:
-            multistate_points_info= self.read_multiple('', discover_request=(multistate_request, 4), points_per_request=5)
+            multistate_points_info= self.read_multiple('', discover_request=try_to_add_priorityArray(multistate_request), points_per_request=5)
         except SegmentationNotSupported:
             raise
             
@@ -262,13 +296,16 @@ class ReadPropertyMultiple():
             point_type = str(each[0])
             point_address = str(each[1])
             point_infos = multistate_points_info[i]
+            
+            point_priority_array, point_infos = retrieve_priority_array_from_response(point_infos)
+
             i += 1
 
             points.append(
                 EnumPoint(
                     pointType=point_type,       pointAddress=point_address,     pointName=point_infos[0],
                     description=point_infos[3], presentValue=point_infos[1],    units_state=point_infos[2],
-                    device=self))
+                    priority_array = point_priority_array, device=self))
 
         binary_request = []
         list_of_binary = retrieve_type(objList, 'binary')
@@ -276,7 +313,7 @@ class ReadPropertyMultiple():
             binary_request.append('{} {} objectName presentValue inactiveText activeText description '.format(binary_points, address))
 
         try:
-            binary_points_info= self.read_multiple('', discover_request=(binary_request, 5), points_per_request=5)
+            binary_points_info= self.read_multiple('', discover_request=try_to_add_priorityArray(binary_request), points_per_request=5)
         except SegmentationNotSupported:
             raise
             
@@ -286,19 +323,21 @@ class ReadPropertyMultiple():
             point_address = str(each[1])
             point_infos = binary_points_info[i]
             
-            if len(point_infos) == 3:
+            point_priority_array, point_infos = retrieve_priority_array_from_response(point_infos)
+            
+            if len(point_infos) == 4:
                 #we probably get only objectName, presentValue and description
                 point_units_state = ('OFF', 'ON')
                 point_description = point_infos[2]
 
-            elif len(point_infos) == 5:
+            elif len(point_infos) == 6:
                 point_units_state = (point_infos[2], point_infos[3])
                 point_description = point_infos[4]
 
                 if point_description is None:
                     point_description = ""
 
-            elif len(point_infos) == 2:
+            elif len(point_infos) == 3:
                 point_units_state = ('OFF', 'ON')          
                 point_description = ""
 
@@ -313,7 +352,7 @@ class ReadPropertyMultiple():
                 BooleanPoint(
                     pointType=point_type,           pointAddress=point_address,     pointName=point_infos[0],
                     description=point_description,  presentValue=point_infos[1],    units_state=point_units_state,
-                    device=self))
+                    priority_array = point_priority_array, device=self))
             
         self._log.info('Ready!')
         return (objList, points)

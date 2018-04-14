@@ -70,7 +70,8 @@ class Point():
 
     def __init__(self, device=None,
                  pointType=None,    pointAddress=None,  pointName=None,
-                 description=None,  presentValue=None,  units_state=None):
+                 description=None,  presentValue=None,  units_state=None,
+                 priority_array = None):
 
         self._history = namedtuple('_history', ['timestamp', 'value'])
         self.properties = PointProperties()
@@ -95,6 +96,7 @@ class Point():
 
         self.properties.description = description
         self.properties.units_state = units_state
+        self.properties.priority_array = priority_array
         self.properties.simulated = (False, 0)
         self.properties.overridden = (False, 0)
 
@@ -455,11 +457,13 @@ class NumericPoint(Point):
 
     def __init__(self, device=None,
                  pointType=None,    pointAddress=None,  pointName=None,
-                 description=None,  presentValue=None,  units_state=None):
+                 description=None,  presentValue=None,  units_state=None,
+                 priority_array=None):
 
         Point.__init__(self, device=device,
                        pointType=pointType,     pointAddress=pointAddress,  pointName=pointName,
-                       description=description, presentValue=presentValue,  units_state=units_state)
+                       description=description, presentValue=presentValue,  units_state=units_state,
+                       priority_array=priority_array)
 
     @property
     def units(self):
@@ -518,11 +522,13 @@ class BooleanPoint(Point):
 
     def __init__(self, device=None,
                  pointType=None,    pointAddress=None,  pointName=None,
-                 description=None,  presentValue=None,  units_state=None):
+                 description=None,  presentValue=None,  units_state=None,
+                 priority_array=None):
 
         Point.__init__(self, device=device,
                        pointType=pointType,     pointAddress=pointAddress,  pointName=pointName,
-                       description=description, presentValue=presentValue,  units_state=units_state)
+                       description=description, presentValue=presentValue,  units_state=units_state,
+                       priority_array=priority_array)
 
     @property
     def value(self):
@@ -602,11 +608,13 @@ class EnumPoint(Point):
 
     def __init__(self, device=None,
                  pointType=None,    pointAddress=None,  pointName=None,
-                 description=None,  presentValue=None,  units_state=None):
+                 description=None,  presentValue=None,  units_state=None,
+                 priority_array=None):
 
         Point.__init__(self, device=device,
                        pointType=pointType,     pointAddress=pointAddress,  pointName=pointName,
-                       description=description, presentValue=presentValue,  units_state=units_state)
+                       description=description, presentValue=presentValue,  units_state=units_state,
+                       priority_array=priority_array)
 
     @property
     def enumValue(self):

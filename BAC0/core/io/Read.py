@@ -318,7 +318,8 @@ class ReadProperty():
             prop_id = int(prop_id)
         datatype = get_datatype(obj_type, prop_id, vendor_id=vendor_id)
         if not datatype:
-            raise ValueError("invalid property for object type")
+            raise ValueError("invalid property for object type : {} | {}".format(
+                                obj_type, prop_id))
 
         # build a request
         request = ReadPropertyRequest(
@@ -338,63 +339,8 @@ class ReadProperty():
         """
         Build request from args
         """
-        i = 0
-        addr = args[i]
-        i += 1
 
-        read_access_spec_list = []
-        while i < len(args):
-            obj_type = args[i]
-            i += 1
-
-            if obj_type.isdigit():
-                obj_type = int(obj_type)
-            elif not get_object_class(obj_type):
-                raise ValueError("unknown object type")
-
-            obj_inst = int(args[i])
-            i += 1
-
-            prop_reference_list = []
-            while i < len(args):
-                prop_id = args[i]
-                if prop_id not in PropertyIdentifier.enumerations:
-                    break
-
-                i += 1
-                if prop_id in ('all', 'required', 'optional'):
-                    pass
-                else:
-                    datatype = get_datatype(obj_type, prop_id)
-                    if not datatype:
-                        raise ValueError(
-                            "invalid property for object type : {} | {}".format(
-                                (obj_type, prop_id)))
-
-                # build a property reference
-                prop_reference = PropertyReference(propertyIdentifier=prop_id)
-
-                # check for an array index
-                if (i < len(args)) and args[i].isdigit():
-                    prop_reference.propertyArrayIndex = int(args[i])
-                    i += 1
-
-                prop_reference_list.append(prop_reference)
-
-            if not prop_reference_list:
-                raise ValueError("provide at least one property")
-
-            # build a read access specification
-            read_access_spec = ReadAccessSpecification(
-                objectIdentifier=(obj_type, obj_inst),
-                listOfPropertyReferences=prop_reference_list)
-
-            read_access_spec_list.append(read_access_spec)
-
-        if not read_access_spec_list:
-            raise RuntimeError(
-                "at least one read access specification required")
-
+        read_access_spec_list, addr = validate_rpm(args)
         # build the request
         request = ReadPropertyMultipleRequest(
             listOfReadAccessSpecs=read_access_spec_list)
@@ -403,6 +349,66 @@ class ReadProperty():
             'REQUEST', request))
         return request
 
+
+def validate_rpm(args):
+    i = 0
+    addr = args[i]
+    i += 1
+
+    read_access_spec_list = []
+    while i < len(args):
+        obj_type = args[i]
+        i += 1
+
+        if obj_type.isdigit():
+            obj_type = int(obj_type)
+        elif not get_object_class(obj_type):
+            raise ValueError("unknown object type")
+
+        obj_inst = int(args[i])
+        i += 1
+
+        prop_reference_list = []
+        while i < len(args):
+            prop_id = args[i]
+            if prop_id not in PropertyIdentifier.enumerations:
+                break
+
+            i += 1
+            if prop_id in ('all', 'required', 'optional'):
+                pass
+            else:
+                datatype = get_datatype(obj_type, prop_id)
+                if not datatype:
+                    raise ValueError(
+                        "invalid property for object type : {} | {}".format(
+                            obj_type, prop_id))
+
+            # build a property reference
+            prop_reference = PropertyReference(propertyIdentifier=prop_id)
+
+            # check for an array index
+            if (i < len(args)) and args[i].isdigit():
+                prop_reference.propertyArrayIndex = int(args[i])
+                i += 1
+
+            prop_reference_list.append(prop_reference)
+
+        if not prop_reference_list:
+            raise ValueError("provide at least one property")
+
+        # build a read access specification
+        read_access_spec = ReadAccessSpecification(
+            objectIdentifier=(obj_type, obj_inst),
+            listOfPropertyReferences=prop_reference_list)
+
+        read_access_spec_list.append(read_access_spec)
+
+    if not read_access_spec_list:
+        raise RuntimeError(
+            "at least one read access specification required")
+    
+    return (read_access_spec_list, addr)
 
 def find_reason(apdu):
     if apdu.pduType == RejectPDU.pduType:
